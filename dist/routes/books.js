@@ -21,7 +21,7 @@ router.get('/', async (c) => {
     const q = c.req.query('q') ?? '';
     const status = c.req.query('status');
     const sort = c.req.query('sort') ?? '';
-    const view = c.req.query('view') ?? 'shelf';
+    const view = c.req.query('view') ?? 'grid';
     const books = await bookRepository.findAll({ q, status, sort });
     return c.html(view === 'grid' ? _jsx(BookCoverGrid, { books: books }) : _jsx(BookshelfGrid, { books: books }));
 });

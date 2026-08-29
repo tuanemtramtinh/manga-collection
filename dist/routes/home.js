@@ -18,7 +18,7 @@ router.get('/', async (c) => {
     const sort = validSorts.includes(sortParam)
         ? sortParam
         : 'newest';
-    const view = c.req.query('view') === 'grid' ? 'grid' : 'shelf';
+    const view = c.req.query('view') === 'shelf' ? 'shelf' : 'grid';
     const returnParams = new URLSearchParams();
     if (q)
         returnParams.set('q', q);

@@ -107,19 +107,19 @@ const Controls: FC<ControlsProps> = ({ q, status, sort, view }) => (
       <div class="join">
         <button
           type="button"
-          onclick="document.getElementById('hidden-view').value='shelf';document.getElementById('filter-form').submit()"
-          class={`join-item btn btn-sm ${view === 'shelf' ? 'btn-primary' : 'btn-ghost'}`}
-          title="Kệ sách"
-        >
-          <Icon name="List" size={16} />
-        </button>
-        <button
-          type="button"
           onclick="document.getElementById('hidden-view').value='grid';document.getElementById('filter-form').submit()"
           class={`join-item btn btn-sm ${view === 'grid' ? 'btn-primary' : 'btn-ghost'}`}
           title="Lưới ảnh"
         >
           <Icon name="LayoutGrid" size={16} />
+        </button>
+        <button
+          type="button"
+          onclick="document.getElementById('hidden-view').value='shelf';document.getElementById('filter-form').submit()"
+          class={`join-item btn btn-sm ${view === 'shelf' ? 'btn-primary' : 'btn-ghost'}`}
+          title="Kệ sách"
+        >
+          <Icon name="List" size={16} />
         </button>
       </div>
 
