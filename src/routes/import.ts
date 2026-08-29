@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import * as XLSX from 'xlsx'
 import { bookRepository } from '../repositories/bookRepository.js'
 import type { BookStatus } from '../types.js'
+import { getUserId } from '../lib/ctx.js'
 
 const router = new Hono()
 
@@ -32,6 +33,7 @@ function column(row: Record<string, unknown>, ...names: string[]): unknown {
 }
 
 router.post('/books', async (c) => {
+  const userId = getUserId(c)
   const body = await c.req.parseBody()
   const file = body.file
 
@@ -42,7 +44,7 @@ router.post('/books', async (c) => {
   if (!sheet) return c.redirect('/?import=error')
 
   const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: '' })
-  const existing = await bookRepository.findAll()
+  const existing = await bookRepository.findAll({ userId })
   const titles = new Set(existing.map(book => book.title.trim().toLocaleLowerCase()))
   let imported = 0
 
@@ -66,7 +68,7 @@ router.post('/books', async (c) => {
       hasGoods: false,
       goodsCount: 0,
       coverUrl: null,
-    })
+    }, userId)
     titles.add(normalizedTitle)
     imported++
   }

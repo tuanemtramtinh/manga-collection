@@ -1,13 +1,13 @@
 import { Hono } from 'hono'
 import { wishlistRepository } from '../repositories/wishlistRepository.js'
 import WishlistPage from '../pages/Wishlist.js'
-import { getUserEmail } from '../lib/ctx.js'
+import { getUserEmail, getUserId } from '../lib/ctx.js'
 
 const router = new Hono()
 
 // GET /wishlist — Trang wishlist
 router.get('/', async (c) => {
-  const items = await wishlistRepository.findAll()
+  const items = await wishlistRepository.findAll(getUserId(c))
   return c.html(<WishlistPage items={items} userEmail={getUserEmail(c)} />)
 })
 
@@ -22,19 +22,19 @@ router.post('/', async (c) => {
     volumeNumber:   Number(body.volumeNumber) || 0,
     estimatedPrice: body.estimatedPrice ? Number(body.estimatedPrice) : null,
     notes:          body.notes ? String(body.notes) : null,
-  })
+  }, getUserId(c))
   return c.redirect('/wishlist')
 })
 
 // DELETE /wishlist/:id — Xóa (fetch)
 router.delete('/:id', async (c) => {
-  await wishlistRepository.delete(Number(c.req.param('id')))
+  await wishlistRepository.delete(Number(c.req.param('id')), getUserId(c))
   return c.json({ ok: true })
 })
 
 // POST /wishlist/:id/delete — Xóa (form fallback)
 router.post('/:id/delete', async (c) => {
-  await wishlistRepository.delete(Number(c.req.param('id')))
+  await wishlistRepository.delete(Number(c.req.param('id')), getUserId(c))
   return c.redirect('/wishlist')
 })
 

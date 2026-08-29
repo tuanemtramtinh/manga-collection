@@ -6,19 +6,20 @@ import type { NewBook } from '../db/schema.js'
 import { uniqueSlug } from '../lib/slug.js'
 
 export type BookFilters = {
+  userId?: number
   q?: string
   status?: BookStatus | ''
   sort?: string
 }
 
-export type CreateBookInput = Omit<NewBook, 'id'>
+export type CreateBookInput = Omit<NewBook, 'id' | 'userId'>
 export type UpdateBookInput = Partial<CreateBookInput>
 export type BookPage = { books: Book[]; total: number }
 
 export const bookRepository = {
 
   async findAll(filters: BookFilters = {}): Promise<Book[]> {
-    const { q, status, sort } = filters
+    const { q, status, sort, userId } = filters
 
     const conditions = []
 
@@ -34,6 +35,7 @@ export const bookRepository = {
     if (status) {
       conditions.push(eq(books.status, status))
     }
+    if (userId) conditions.push(eq(books.userId, userId))
 
     const orderBy = sort === 'title'
       ? asc(books.title)
@@ -49,10 +51,11 @@ export const bookRepository = {
   },
 
   async findPage(filters: BookFilters, page: number, pageSize: number): Promise<BookPage> {
-    const { q, status, sort } = filters
+    const { q, status, sort, userId } = filters
     const conditions = []
     if (q) conditions.push(or(ilike(books.title, `%${q}%`), ilike(books.author, `%${q}%`)))
     if (status) conditions.push(eq(books.status, status))
+    if (userId) conditions.push(eq(books.userId, userId))
     const orderBy = sort === 'title' ? asc(books.title) : sort === 'volumes' ? desc(books.ownedVolumes) : desc(books.id)
     const where = conditions.length ? and(...conditions) : undefined
     const [rows, countRows] = await Promise.all([
@@ -62,36 +65,44 @@ export const bookRepository = {
     return { books: rows as Book[], total: Number(countRows[0]?.total ?? 0) }
   },
 
-  async findById(id: number): Promise<Book | undefined> {
-    const [row] = await db.select().from(books).where(eq(books.id, id))
+  async findById(id: number, userId?: number): Promise<Book | undefined> {
+    const conditions = [eq(books.id, id)]
+    if (userId) conditions.push(eq(books.userId, userId))
+    const [row] = await db.select().from(books).where(and(...conditions))
     return row as Book | undefined
   },
 
-  async findBySlug(slug: string): Promise<Book | undefined> {
-    const [row] = await db.select().from(books).where(eq(books.slug, slug))
+  async findBySlug(slug: string, userId?: number): Promise<Book | undefined> {
+    const conditions = [eq(books.slug, slug)]
+    if (userId) conditions.push(eq(books.userId, userId))
+    const [row] = await db.select().from(books).where(and(...conditions))
     return row as Book | undefined
   },
 
-  async create(input: CreateBookInput): Promise<Book> {
+  async create(input: CreateBookInput, userId: number): Promise<Book> {
     const slug = await uniqueSlug(
       (input as any).title ?? '',
       async (s) => !!(await db.select({ id: books.id }).from(books).where(eq(books.slug, s)))[0],
     )
-    const [row] = await db.insert(books).values({ ...input, slug }).returning()
+    const [row] = await db.insert(books).values({ ...input, userId, slug }).returning()
     return row as Book
   },
 
-  async update(id: number, input: UpdateBookInput): Promise<Book | undefined> {
+  async update(id: number, input: UpdateBookInput, userId?: number): Promise<Book | undefined> {
+    const conditions = [eq(books.id, id)]
+    if (userId) conditions.push(eq(books.userId, userId))
     const [row] = await db
       .update(books)
       .set(input)
-      .where(eq(books.id, id))
+      .where(and(...conditions))
       .returning()
     return row as Book | undefined
   },
 
-  async delete(id: number): Promise<void> {
-    await db.delete(books).where(eq(books.id, id))
+  async delete(id: number, userId?: number): Promise<void> {
+    const conditions = [eq(books.id, id)]
+    if (userId) conditions.push(eq(books.userId, userId))
+    await db.delete(books).where(and(...conditions))
   },
 
   // Cập nhật goodsCount sau khi thêm/xóa goods

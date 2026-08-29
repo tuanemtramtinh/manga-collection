@@ -5,3 +5,9 @@ import type { AuthUser } from '../middleware/auth.js'
 export function getUserEmail(c: Context): string | undefined {
   return (c.get('user' as any) as AuthUser | undefined)?.email
 }
+
+export function getUserId(c: Context): number {
+  const id = (c.get('user' as any) as AuthUser | undefined)?.id
+  if (!id) throw new Error('Authenticated user is missing from context')
+  return id
+}

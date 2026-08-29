@@ -3,7 +3,7 @@ import HomePage from '../pages/Home.js'
 import { bookRepository } from '../repositories/bookRepository.js'
 import { volumeRepository } from '../repositories/volumeRepository.js'
 import { purchaseBatchRepository } from '../repositories/purchaseBatchRepository.js'
-import { getUserEmail } from '../lib/ctx.js'
+import { getUserEmail, getUserId } from '../lib/ctx.js'
 import type { BookStatus } from '../types.js'
 
 const router = new Hono()
@@ -12,6 +12,7 @@ const validStatuses: BookStatus[] = ['ongoing', 'complete', 'dropped']
 const validSorts = ['newest', 'title', 'volumes'] as const
 
 router.get('/', async (c) => {
+  const userId = getUserId(c)
   const qParam = c.req.query('q') ?? ''
   const q      = qParam.trim()
   const statusParam = c.req.query('status') ?? ''
@@ -34,8 +35,8 @@ router.get('/', async (c) => {
   if (page > 1) returnParams.set('page', String(page))
 
   const [bookPage, quickBooks, individualSpent, bundleSpent] = await Promise.all([
-    bookRepository.findPage({ q, status, sort }, page, pageSize),
-    bookRepository.findAll({ sort: 'title' }),
+    bookRepository.findPage({ q, status, sort, userId }, page, pageSize),
+    bookRepository.findAll({ sort: 'title', userId }),
     volumeRepository.sumAllPrices(),
     purchaseBatchRepository.sumAllPrices(),
   ])

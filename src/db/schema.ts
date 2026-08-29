@@ -2,6 +2,7 @@ import { pgTable, serial, text, integer, boolean, date, timestamp } from 'drizzl
 
 export const books = pgTable('books', {
   id:           serial('id').primaryKey(),
+  userId:       integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   slug:         text('slug').notNull().default(''),
   title:        text('title').notNull(),
   author:       text('author').notNull().default(''),
@@ -46,6 +47,7 @@ export const goods = pgTable('goods', {
 
 export const wishlist = pgTable('wishlist', {
   id:             serial('id').primaryKey(),
+  userId:         integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   bookId:         integer('book_id').references(() => books.id, { onDelete: 'cascade' }),
   bookTitle:      text('book_title').notNull().default(''),
   volumeNumber:   integer('volume_number').notNull(),

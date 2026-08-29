@@ -8,7 +8,7 @@ import BookDetailPage         from '../pages/BookDetail.js'
 import ImageUpload            from '../components/ImageUpload.js'
 import { deleteImage }        from '../lib/storage.js'
 import type { BookStatus }    from '../types.js'
-import { getUserEmail }       from '../lib/ctx.js'
+import { getUserEmail, getUserId } from '../lib/ctx.js'
 import { purchaseBatchRepository } from '../repositories/purchaseBatchRepository.js'
 
 const router = new Hono()
@@ -22,16 +22,18 @@ async function bookSlug(bookId: number): Promise<string> {
 
 // GET /books — bookshelf grid đã lọc (hỗ trợ ?view=shelf|grid)
 router.get('/', async (c) => {
+  const userId = getUserId(c)
   const q      = c.req.query('q') ?? ''
   const status = c.req.query('status') as BookStatus | ''
   const sort   = c.req.query('sort') ?? ''
   const view   = c.req.query('view') ?? 'grid'
-  const books  = await bookRepository.findAll({ q, status, sort })
+  const books  = await bookRepository.findAll({ q, status, sort, userId })
   return c.html(view === 'grid' ? <BookCoverGrid books={books} /> : <BookshelfGrid books={books} />)
 })
 
 // GET /books/:slug — Trang chi tiết
 router.get('/:slug', async (c) => {
+  const userId = getUserId(c)
   const slug = c.req.param('slug')
   const returnParams = new URLSearchParams()
   for (const key of ['q', 'status', 'sort', 'view', 'page']) {
@@ -47,7 +49,7 @@ router.get('/:slug', async (c) => {
   }
   const volumePageParam = Number(c.req.query('volumePage') ?? 1)
   const volumePage = Number.isInteger(volumePageParam) && volumePageParam > 0 ? volumePageParam : 1
-  const book = await bookRepository.findBySlug(slug)
+  const book = await bookRepository.findBySlug(slug, userId)
   if (!book) return c.notFound()
 
   const [volumeResult, paginatedSections, bundleTotal, volumeSpentTotal] = await Promise.all([
@@ -64,6 +66,7 @@ router.get('/:slug', async (c) => {
 
 // POST /books — Thêm bộ truyện
 router.post('/', async (c) => {
+  const userId = getUserId(c)
   const body = await c.req.parseBody()
   await bookRepository.create({
     title:        String(body.title),
@@ -76,18 +79,19 @@ router.post('/', async (c) => {
     goodsCount:   0,
     coverUrl:     body.coverUrl ? String(body.coverUrl) : null,
     notes:        body.notes   ? String(body.notes)    : null,
-  })
+  }, userId)
   return c.redirect('/')
 })
 
 // POST /books/:id — Cập nhật bộ truyện
 router.post('/:id', async (c) => {
   const id      = Number(c.req.param('id'))
+  const userId  = getUserId(c)
   const body    = await c.req.parseBody()
   const newUrl  = body.coverUrl ? String(body.coverUrl) : null
 
   // Xóa ảnh cũ nếu người dùng upload ảnh mới khác
-  const existing = await bookRepository.findById(id)
+  const existing = await bookRepository.findById(id, userId)
   if (existing?.coverUrl && newUrl && newUrl !== existing.coverUrl) {
     await deleteImage(existing.coverUrl).catch(() => {}) // lỗi xóa không chặn save
   }
@@ -100,20 +104,20 @@ router.post('/:id', async (c) => {
     color:        String(body.color || '#2563eb'),
     coverUrl:     newUrl,
     notes:        body.notes ? String(body.notes) : null,
-  })
+  }, userId)
   const slug = updated?.slug ?? existing?.slug ?? String(id)
   return c.redirect(`/books/${slug}`)
 })
 
 // POST /books/:id/delete — Xóa bộ truyện (form fallback)
 router.post('/:id/delete', async (c) => {
-  await bookRepository.delete(Number(c.req.param('id')))
+  await bookRepository.delete(Number(c.req.param('id')), getUserId(c))
   return c.redirect('/')
 })
 
 // DELETE /books/:id — Xóa bộ truyện (fetch)
 router.delete('/:id', async (c) => {
-  await bookRepository.delete(Number(c.req.param('id')))
+  await bookRepository.delete(Number(c.req.param('id')), getUserId(c))
   return c.json({ ok: true })
 })
 

@@ -1,4 +1,4 @@
-import { eq, asc } from 'drizzle-orm'
+import { eq, asc, and } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { wishlist, books } from '../db/schema.js'
 import type { WishlistRow, NewWishlist } from '../db/schema.js'
@@ -8,15 +8,16 @@ export type WishlistItem = WishlistRow & {
   bookColor: string
 }
 
-export type CreateWishlistInput = Omit<NewWishlist, 'id'>
+export type CreateWishlistInput = Omit<NewWishlist, 'id' | 'userId'>
 
 export const wishlistRepository = {
 
-  async findAll(): Promise<WishlistItem[]> {
+  async findAll(userId: number): Promise<WishlistItem[]> {
     const rows = await db
       .select()
       .from(wishlist)
-      .leftJoin(books, eq(wishlist.bookId, books.id))
+      .leftJoin(books, and(eq(wishlist.bookId, books.id), eq(books.userId, userId)))
+      .where(eq(wishlist.userId, userId))
       .orderBy(asc(wishlist.id))
 
     return rows.map(r => ({
@@ -26,12 +27,12 @@ export const wishlistRepository = {
     }))
   },
 
-  async create(input: CreateWishlistInput): Promise<WishlistRow> {
-    const [row] = await db.insert(wishlist).values(input).returning()
+  async create(input: CreateWishlistInput, userId: number): Promise<WishlistRow> {
+    const [row] = await db.insert(wishlist).values({ ...input, userId }).returning()
     return row
   },
 
-  async delete(id: number): Promise<void> {
-    await db.delete(wishlist).where(eq(wishlist.id, id))
+  async delete(id: number, userId: number): Promise<void> {
+    await db.delete(wishlist).where(and(eq(wishlist.id, id), eq(wishlist.userId, userId)))
   },
 }

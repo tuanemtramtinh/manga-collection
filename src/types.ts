@@ -2,6 +2,7 @@ export type BookStatus = 'ongoing' | 'complete' | 'dropped'
 
 export type Book = {
   id: number
+  userId: number
   slug: string
   title: string
   author: string

@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { bookRepository } from '../repositories/bookRepository.js'
 import { volumeRepository } from '../repositories/volumeRepository.js'
 import { purchaseBatchRepository } from '../repositories/purchaseBatchRepository.js'
+import { getUserId } from '../lib/ctx.js'
 
 const router = new Hono()
 
@@ -20,12 +21,13 @@ function parseNumbers(raw: string): number[] {
 }
 
 router.post('/quick', async (c) => {
+  const userId = getUserId(c)
   const body = await c.req.parseBody()
   const bookId = Number(body.bookId)
   const numbers = parseNumbers(String(body.numbers ?? ''))
   const purchaseDate = String(body.purchaseDate ?? '').trim()
   const price = Number(body.price)
-  const book = await bookRepository.findById(bookId)
+  const book = await bookRepository.findById(bookId, userId)
 
   if (!book || !numbers.length || !purchaseDate || !Number.isFinite(price) || price <= 0) {
     return c.redirect('/?quick=error')

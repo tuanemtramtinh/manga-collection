@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import * as XLSX from 'xlsx'
 import { bookRepository }     from '../repositories/bookRepository.js'
 import { spendingRepository } from '../repositories/spendingRepository.js'
+import { getUserId } from '../lib/ctx.js'
 
 const router = new Hono()
 
@@ -13,7 +14,7 @@ const STATUS_LABELS: Record<string, string> = {
 
 // GET /export/books — Export all books as Excel
 router.get('/books', async (c) => {
-  const books = await bookRepository.findAll()
+  const books = await bookRepository.findAll({ userId: getUserId(c) })
 
   const rows = books.map(b => ({
     'Tên truyện':  b.title,
