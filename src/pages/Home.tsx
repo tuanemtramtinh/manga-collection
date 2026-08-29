@@ -25,11 +25,11 @@ const BookCoverCard: FC<{ book: Book; returnQuery?: string }> = ({ book, returnQ
           <p class="font-semibold text-sm leading-snug line-clamp-2 group-hover:text-primary transition-colors" style="min-height:2.6em;">{book.title}</p>
           <p class="text-xs text-base-content/50 truncate mt-0.5">{book.author || '\u00a0'}</p>
         </div>
-        <div class="flex items-center justify-between gap-1">
-          <span class="badge badge-xs flex-1 min-w-0 truncate px-2" style={`background-color:${book.color};color:white;border:none;`}>
+        <div class="flex flex-col items-start gap-1 min-w-0">
+          <span class="badge badge-xs max-w-full truncate px-2" style={`background-color:${book.color};color:white;border:none;`}>
             {STATUS_LABELS[book.status]}
           </span>
-          <span class="badge badge-xs badge-outline shrink-0 ml-1">
+          <span class="badge badge-xs badge-outline max-w-full truncate">
             {book.totalVolumes > 0 ? `${book.ownedVolumes}/${book.totalVolumes} tập` : `${book.ownedVolumes} tập`}
           </span>
         </div>
