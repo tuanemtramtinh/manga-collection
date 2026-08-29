@@ -46,6 +46,20 @@
   }
 })()
 
+// ─── Collapsible custom sections ─────────────────────────────────────────────
+
+document.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-toggle-section]')
+  if (!button) return
+  const content = document.getElementById(button.dataset.toggleSection)
+  if (!content) return
+
+  const isOpen = button.getAttribute('aria-expanded') === 'true'
+  button.setAttribute('aria-expanded', String(!isOpen))
+  content.classList.toggle('is-collapsed', isOpen)
+  button.querySelector('span')?.classList.toggle('rotate-180', !isOpen)
+})
+
 // ─── Load form vào modal_edit ─────────────────────────────────────────────────
 
 async function loadEditForm(url) {

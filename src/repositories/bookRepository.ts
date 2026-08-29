@@ -1,4 +1,4 @@
-import { eq, ilike, and, or, sql, asc, desc } from 'drizzle-orm'
+import { eq, ilike, and, or, sql, asc, desc, count } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { books } from '../db/schema.js'
 import type { Book, BookStatus } from '../types.js'
@@ -13,6 +13,7 @@ export type BookFilters = {
 
 export type CreateBookInput = Omit<NewBook, 'id'>
 export type UpdateBookInput = Partial<CreateBookInput>
+export type BookPage = { books: Book[]; total: number }
 
 export const bookRepository = {
 
@@ -45,6 +46,20 @@ export const bookRepository = {
       : await db.select().from(books).orderBy(orderBy)
 
     return rows as Book[]
+  },
+
+  async findPage(filters: BookFilters, page: number, pageSize: number): Promise<BookPage> {
+    const { q, status, sort } = filters
+    const conditions = []
+    if (q) conditions.push(or(ilike(books.title, `%${q}%`), ilike(books.author, `%${q}%`)))
+    if (status) conditions.push(eq(books.status, status))
+    const orderBy = sort === 'title' ? asc(books.title) : sort === 'volumes' ? desc(books.ownedVolumes) : desc(books.id)
+    const where = conditions.length ? and(...conditions) : undefined
+    const [rows, countRows] = await Promise.all([
+      db.select().from(books).where(where).orderBy(orderBy).limit(pageSize).offset((page - 1) * pageSize),
+      db.select({ total: count() }).from(books).where(where),
+    ])
+    return { books: rows as Book[], total: Number(countRows[0]?.total ?? 0) }
   },
 
   async findById(id: number): Promise<Book | undefined> {

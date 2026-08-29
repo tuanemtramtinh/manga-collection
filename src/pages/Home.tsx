@@ -226,6 +226,22 @@ const Footer: FC = () => (
   <footer class="mt-16 pb-10" />
 )
 
+const Pagination: FC<{ page: number; totalPages: number; query: string }> = ({ page, totalPages, query }) => {
+  if (totalPages <= 1) return null
+  const href = (next: number) => {
+    const params = new URLSearchParams(query)
+    params.set('page', String(next))
+    return `/?${params.toString()}`
+  }
+  return (
+    <nav class="flex justify-center items-center gap-2 mt-6" aria-label="Phân trang kệ truyện">
+      <a href={href(Math.max(1, page - 1))} class={`btn btn-sm btn-ghost ${page === 1 ? 'btn-disabled' : ''}`} aria-label="Trang trước">‹</a>
+      <span class="text-sm text-base-content/60">Trang {page}/{totalPages}</span>
+      <a href={href(Math.min(totalPages, page + 1))} class={`btn btn-sm btn-ghost ${page === totalPages ? 'btn-disabled' : ''}`} aria-label="Trang sau">›</a>
+    </nav>
+  )
+}
+
 const QuickPurchaseModal: FC<{ books: Book[] }> = ({ books }) => (
   <dialog id="modal_quick_purchase" class="modal modal-bottom sm:modal-middle">
     <div class="modal-box w-full sm:max-w-md">
@@ -272,9 +288,9 @@ const QuickPurchaseModal: FC<{ books: Book[] }> = ({ books }) => (
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-type HomePageProps = { books: Book[]; quickBooks: Book[]; totalSpent: number; userEmail?: string; q: string; status: string; sort: string; view: string; returnQuery?: string }
+type HomePageProps = { books: Book[]; quickBooks: Book[]; totalSpent: number; userEmail?: string; q: string; status: string; sort: string; view: string; page: number; totalPages: number; returnQuery?: string }
 
-const HomePage: FC<HomePageProps> = ({ books, quickBooks, totalSpent, userEmail, q, status, sort, view, returnQuery }) => (
+const HomePage: FC<HomePageProps> = ({ books, quickBooks, totalSpent, userEmail, q, status, sort, view, page, totalPages, returnQuery }) => (
   <BaseLayout title="Kệ Truyện" userEmail={userEmail}>
     <div class="container mx-auto px-4 py-6 sm:py-8" style="max-width:1080px;">
 
@@ -322,6 +338,7 @@ const HomePage: FC<HomePageProps> = ({ books, quickBooks, totalSpent, userEmail,
       {view === 'grid'
         ? <BookCoverGrid books={books} returnQuery={returnQuery} />
         : <BookshelfGrid books={books} returnQuery={returnQuery} />}
+      <Pagination page={page} totalPages={totalPages} query={returnQuery ?? ''} />
 
       <Footer />
     </div>

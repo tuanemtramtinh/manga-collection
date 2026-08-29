@@ -4,7 +4,7 @@ import {
   Calendar, Pencil, X, ArrowLeft,
   Star, Sun, Moon, Trash2, Plus, Upload,
   Download, ShoppingCart, LayoutGrid, List,
-  AlertCircle, Eye, EyeOff,
+  AlertCircle, Eye, EyeOff, ChevronDown,
 } from 'lucide-static'
 
 // Map icon names → SVG strings
@@ -13,7 +13,7 @@ export const ICONS = {
   Calendar, Pencil, X, ArrowLeft,
   Star, Sun, Moon, Trash2, Plus, Upload,
   Download, ShoppingCart, LayoutGrid, List,
-  AlertCircle, Eye, EyeOff,
+  AlertCircle, Eye, EyeOff, ChevronDown,
 } as const
 
 export type IconName = keyof typeof ICONS

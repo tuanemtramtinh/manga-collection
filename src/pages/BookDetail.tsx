@@ -38,9 +38,10 @@ type SectionHeaderProps = {
   addLabel?: string
   onAddFetch?: string
   deleteUrl?: string
+  collapseId?: string
 }
 
-const SectionHeader: FC<SectionHeaderProps> = ({ icon, title, count, unit, modalId, addLabel, onAddFetch, deleteUrl }) => (
+const SectionHeader: FC<SectionHeaderProps> = ({ icon, title, count, unit, modalId, addLabel, onAddFetch, deleteUrl, collapseId }) => (
   <div class="flex items-center justify-between mb-4 gap-2">
     <h2 class="text-lg sm:text-xl font-bold flex items-center gap-2 min-w-0">
       <Icon name={icon} size={20} class="shrink-0" />
@@ -48,6 +49,11 @@ const SectionHeader: FC<SectionHeaderProps> = ({ icon, title, count, unit, modal
       <span class="text-base font-normal text-base-content/40 shrink-0">{count} {unit}</span>
     </h2>
     <div class="flex items-center gap-2 shrink-0">
+      {collapseId && (
+        <button class="btn btn-ghost btn-sm btn-square" type="button" data-toggle-section={collapseId} aria-expanded="true" title="Mở hoặc đóng section">
+          <Icon name="ChevronDown" size={16} />
+        </button>
+      )}
       {modalId && addLabel && (
         <button class="btn btn-primary btn-sm gap-1.5" {...{ 'data-open-modal': modalId }}>
           <Icon name="Plus" size={14} />
@@ -98,7 +104,7 @@ const VolumeCard: FC<{ volume: Volume; bookColor: string; bookId: number }> = ({
   <div class="card card-compact bg-base-100 border border-base-200 shadow-sm hover:shadow transition-shadow group relative">
     <figure class="pt-3 px-3">
       {volume.coverUrl
-        ? <img src={volume.coverUrl} alt={`Tập ${volume.volumeNumber}`} class="rounded w-full object-cover" style="aspect-ratio:2/3;" loading="lazy" />
+        ? <img src={volume.coverUrl} alt={`Tập ${volume.volumeNumber}`} data-viewer-image="true" class="rounded w-full object-cover" style="aspect-ratio:2/3;" loading="lazy" />
         : <CoverPlaceholder color={bookColor} />
       }
     </figure>
@@ -136,7 +142,7 @@ const SectionItemCard: FC<{ item: SectionItem; bookColor: string; bookId: number
   <div class="card card-compact bg-base-100 border border-base-200 shadow-sm hover:shadow transition-shadow group relative">
     <figure class="pt-3 px-3">
       {item.imageUrl
-        ? <img src={item.imageUrl} alt={item.name} class="rounded w-full object-cover" style="aspect-ratio:2/3;" loading="lazy" />
+        ? <img src={item.imageUrl} alt={item.name} data-viewer-image="true" class="rounded w-full object-cover" style="aspect-ratio:2/3;" loading="lazy" />
         : <ImagePlaceholder color={bookColor} label={item.type || item.name} />
       }
     </figure>
@@ -174,12 +180,52 @@ type Props = {
   userEmail?: string
   returnQuery?: string
   bundleTotal?: number
+  sectionTotals?: Record<number, number>
+  sectionPages?: Record<number, number>
+  sectionQuery?: string
+  volumeTotal?: number
+  volumeSpentTotal?: number
+  volumePage?: number
 }
 
 const GRID = 'grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));'
 
-const BookDetailPage: FC<Props> = ({ book, volumes, sections, userEmail, returnQuery, bundleTotal = 0 }) => {
-  const totalSpent        = volumes.reduce((s, v) => s + (v.price ?? 0), 0) + bundleTotal
+const SectionPagination: FC<{ sectionId: number; page: number; total: number; query: string }> = ({ sectionId, page, total, query }) => {
+  const totalPages = Math.ceil(total / 12)
+  if (totalPages <= 1) return null
+  const href = (nextPage: number) => {
+    const params = new URLSearchParams(query)
+    params.set(`sectionPage_${sectionId}`, String(nextPage))
+    return `?${params.toString()}`
+  }
+  return (
+    <nav class="flex justify-center items-center gap-2 mt-4" aria-label="Phân trang section">
+      <a href={href(Math.max(1, page - 1))} class={`btn btn-sm btn-ghost ${page === 1 ? 'btn-disabled' : ''}`} aria-label="Trang trước">‹</a>
+      <span class="text-sm text-base-content/60">Trang {page}/{totalPages}</span>
+      <a href={href(Math.min(totalPages, page + 1))} class={`btn btn-sm btn-ghost ${page === totalPages ? 'btn-disabled' : ''}`} aria-label="Trang sau">›</a>
+    </nav>
+  )
+}
+
+const VolumePagination: FC<{ page: number; total: number; query: string }> = ({ page, total, query }) => {
+  const totalPages = Math.ceil(total / 24)
+  if (totalPages <= 1) return null
+  const href = (nextPage: number) => {
+    const params = new URLSearchParams(query)
+    params.set('volumePage', String(nextPage))
+    return `?${params.toString()}`
+  }
+  return (
+    <nav class="flex justify-center items-center gap-2 mt-4" aria-label="Phân trang tập truyện">
+      <a href={href(Math.max(1, page - 1))} class={`btn btn-sm btn-ghost ${page === 1 ? 'btn-disabled' : ''}`} aria-label="Trang trước">‹</a>
+      <span class="text-sm text-base-content/60">Trang {page}/{totalPages}</span>
+      <a href={href(Math.min(totalPages, page + 1))} class={`btn btn-sm btn-ghost ${page === totalPages ? 'btn-disabled' : ''}`} aria-label="Trang sau">›</a>
+    </nav>
+  )
+}
+
+const BookDetailPage: FC<Props> = ({ book, volumes, sections, userEmail, returnQuery, bundleTotal = 0, sectionTotals = {}, sectionPages = {}, sectionQuery = '', volumeTotal = volumes.length, volumeSpentTotal = volumes.reduce((s, v) => s + (v.price ?? 0), 0), volumePage = 1 }) => {
+  const totalSpent        = volumeSpentTotal + bundleTotal
   const totalSectionSpent = sections.reduce((s, sec) =>
     s + sec.items.reduce((a, i) => a + (i.price ?? 0), 0), 0)
   const grandTotal = totalSpent + totalSectionSpent
@@ -187,7 +233,7 @@ const BookDetailPage: FC<Props> = ({ book, volumes, sections, userEmail, returnQ
   const totalItems = sections.reduce((s, sec) => s + sec.items.length, 0)
 
   return (
-    <BaseLayout title={`${book.title} — Kệ Truyện`} userEmail={userEmail}>
+    <BaseLayout title={`${book.title} — Kệ Truyện`} userEmail={userEmail} enableImageViewer>
       <div class="container mx-auto px-4 py-6 sm:py-8" style="max-width:1080px;">
 
         {/* Back + Edit */}
@@ -208,7 +254,7 @@ const BookDetailPage: FC<Props> = ({ book, volumes, sections, userEmail, returnQ
           <div class="flex gap-5 sm:block">
             <div class="w-28 sm:w-40 shrink-0">
               {book.coverUrl
-                ? <img src={book.coverUrl} alt={book.title} class="rounded-xl shadow-lg w-full object-cover" style="aspect-ratio:2/3;" />
+                ? <img src={book.coverUrl} alt={book.title} data-viewer-image="true" class="rounded-xl shadow-lg w-full object-cover" style="aspect-ratio:2/3;" />
                 : <CoverPlaceholder color={book.color} size="lg" />
               }
             </div>
@@ -252,7 +298,7 @@ const BookDetailPage: FC<Props> = ({ book, volumes, sections, userEmail, returnQ
             <div class="stats stats-vertical sm:stats-horizontal shadow mt-1 text-sm">
               <div class="stat px-4 py-2">
                 <div class="stat-title text-xs">Số tập đã có</div>
-                <div class="stat-value text-lg sm:text-xl">{volumes.length}</div>
+                <div class="stat-value text-lg sm:text-xl">{volumeTotal}</div>
               </div>
               <div class="stat px-4 py-2">
                 <div class="stat-title text-xs">Tiền tập</div>
@@ -275,12 +321,16 @@ const BookDetailPage: FC<Props> = ({ book, volumes, sections, userEmail, returnQ
         {/* ── Volumes section ── */}
         <SectionHeader
           icon="BookOpen" title="Danh sách tập"
-          count={volumes.length} unit="tập"
+          count={volumeTotal} unit="tập"
           modalId="modal_volume" addLabel="Thêm tập"
+          collapseId="volume-content"
         />
-        <div class="grid gap-3 sm:gap-4 mb-8 sm:mb-10" style={GRID}>
-          {sorted.map(v => <VolumeCard volume={v} bookColor={book.color} bookId={book.id} />)}
-          <AddCard modalId="modal_volume" label="Thêm tập" />
+        <div id="volume-content" class="section-collapsible">
+          <div class="grid gap-3 sm:gap-4 mb-8 sm:mb-10" style={GRID}>
+            {sorted.map(v => <VolumeCard volume={v} bookColor={book.color} bookId={book.id} />)}
+            <AddCard modalId="modal_volume" label="Thêm tập" />
+          </div>
+          <VolumePagination page={volumePage} total={volumeTotal} query={sectionQuery} />
         </div>
 
         {/* ── Custom sections ── */}
@@ -293,12 +343,16 @@ const BookDetailPage: FC<Props> = ({ book, volumes, sections, userEmail, returnQ
               onAddFetch={`/books/${book.id}/sections/${section.id}/add-item-form`}
               addLabel="Thêm item"
               deleteUrl={`/books/${book.id}/sections/${section.id}`}
+              collapseId={`section-content-${section.id}`}
             />
-            <div class="grid gap-3 sm:gap-4 mb-8 sm:mb-10" style={GRID}>
-              {section.items.map(item => (
-                <SectionItemCard item={item} bookColor={book.color} bookId={book.id} sectionId={section.id} />
-              ))}
-              <AddCard fetchUrl={`/books/${book.id}/sections/${section.id}/add-item-form`} label="Thêm item" />
+            <div id={`section-content-${section.id}`} class="section-collapsible">
+              <div class="grid gap-3 sm:gap-4 mb-8 sm:mb-10" style={GRID}>
+                {section.items.map(item => (
+                  <SectionItemCard item={item} bookColor={book.color} bookId={book.id} sectionId={section.id} />
+                ))}
+                <AddCard fetchUrl={`/books/${book.id}/sections/${section.id}/add-item-form`} label="Thêm item" />
+              </div>
+              <SectionPagination sectionId={section.id} page={sectionPages[section.id] ?? 1} total={sectionTotals[section.id] ?? section.items.length} query={sectionQuery} />
             </div>
           </>
         ))}

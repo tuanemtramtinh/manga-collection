@@ -1,11 +1,12 @@
-import { eq, sum } from 'drizzle-orm'
+import { eq, sum, count } from 'drizzle-orm'
 import { db } from '../db/index.js'
-import { volumes } from '../db/schema.js'
+import { purchaseBatches, volumes } from '../db/schema.js'
 import type { Volume } from '../types.js'
 import type { NewVolume } from '../db/schema.js'
 
 export type CreateVolumeInput = Omit<NewVolume, 'id'>
 export type UpdateVolumeInput = Partial<CreateVolumeInput>
+export type VolumePage = { volumes: Volume[]; total: number }
 
 export const volumeRepository = {
 
@@ -16,6 +17,18 @@ export const volumeRepository = {
       .where(eq(volumes.bookId, bookId))
       .orderBy(volumes.volumeNumber)
     return rows as Volume[]
+  },
+
+  async findByBookIdPage(bookId: number, page: number, pageSize: number): Promise<VolumePage> {
+    const [rows, countRows] = await Promise.all([
+      db.select().from(volumes)
+        .where(eq(volumes.bookId, bookId))
+        .orderBy(volumes.volumeNumber)
+        .limit(pageSize)
+        .offset((page - 1) * pageSize),
+      db.select({ total: count() }).from(volumes).where(eq(volumes.bookId, bookId)),
+    ])
+    return { volumes: rows as Volume[], total: Number(countRows[0]?.total ?? 0) }
   },
 
   async findById(id: number): Promise<Volume | undefined> {
@@ -41,8 +54,30 @@ export const volumeRepository = {
     await db.delete(volumes).where(eq(volumes.id, id))
   },
 
+  async deleteWithBatch(id: number): Promise<void> {
+    const [volume] = await db.select({ purchaseBatchId: volumes.purchaseBatchId })
+      .from(volumes)
+      .where(eq(volumes.id, id))
+
+    if (!volume?.purchaseBatchId) {
+      await this.delete(id)
+      return
+    }
+
+    await db.transaction(async tx => {
+      await tx.delete(volumes).where(eq(volumes.purchaseBatchId, volume.purchaseBatchId!))
+      await tx.delete(purchaseBatches).where(eq(purchaseBatches.id, volume.purchaseBatchId!))
+    })
+  },
+
   async sumAllPrices(): Promise<number> {
     const [row] = await db.select({ total: sum(volumes.price) }).from(volumes)
+    return Number(row?.total ?? 0)
+  },
+
+  async sumPricesByBook(bookId: number): Promise<number> {
+    const [row] = await db.select({ total: sum(volumes.price) }).from(volumes)
+      .where(eq(volumes.bookId, bookId))
     return Number(row?.total ?? 0)
   },
 }

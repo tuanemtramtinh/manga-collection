@@ -4,10 +4,11 @@ import { Sun, Moon } from 'lucide-static'
 type Props = {
   title?: string
   userEmail?: string
+  enableImageViewer?: boolean
   children?: any
 }
 
-const BaseLayout: FC<Props> = ({ title = 'My App', userEmail, children }) => {
+const BaseLayout: FC<Props> = ({ title = 'My App', userEmail, enableImageViewer = false, children }) => {
   return (
     <html lang="vi" data-theme="light">
       <head>
@@ -15,6 +16,7 @@ const BaseLayout: FC<Props> = ({ title = 'My App', userEmail, children }) => {
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>{title}</title>
         <link rel="stylesheet" href="/public/output.css" />
+        {enableImageViewer && <link rel="stylesheet" href="https://unpkg.com/viewerjs@1.12.0/dist/viewer.css" />}
         {/* Apply saved theme before paint to avoid flash */}
         <script dangerouslySetInnerHTML={{ __html: `
           const t = localStorage.getItem('theme') || 'light'
@@ -90,6 +92,8 @@ const BaseLayout: FC<Props> = ({ title = 'My App', userEmail, children }) => {
         ` }} />
 
         <script src="/public/js/main.js" defer></script>
+        {enableImageViewer && <script src="https://unpkg.com/viewerjs@1.12.0/dist/viewer.min.js" defer></script>}
+        {enableImageViewer && <script src="/public/js/image-viewer.js" defer></script>}
         </div>
       </body>
     </html>

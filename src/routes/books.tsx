@@ -34,20 +34,32 @@ router.get('/', async (c) => {
 router.get('/:slug', async (c) => {
   const slug = c.req.param('slug')
   const returnParams = new URLSearchParams()
-  for (const key of ['q', 'status', 'sort', 'view']) {
+  for (const key of ['q', 'status', 'sort', 'view', 'page']) {
     const value = c.req.query(key)
     if (value) returnParams.set(key, value)
   }
+  const sectionPages: Record<number, number> = {}
+  for (const [key, value] of new URL(c.req.url).searchParams.entries()) {
+    if (!key.startsWith('sectionPage_')) continue
+    const sectionId = Number(key.slice('sectionPage_'.length))
+    const page = Number(value)
+    if (Number.isInteger(sectionId) && sectionId > 0 && Number.isInteger(page) && page > 0) sectionPages[sectionId] = page
+  }
+  const volumePageParam = Number(c.req.query('volumePage') ?? 1)
+  const volumePage = Number.isInteger(volumePageParam) && volumePageParam > 0 ? volumePageParam : 1
   const book = await bookRepository.findBySlug(slug)
   if (!book) return c.notFound()
 
-  const [volumes, sections, bundleTotal] = await Promise.all([
-    volumeRepository.findByBookId(book.id),
-    sectionRepository.findByBookId(book.id),
+  const [volumeResult, paginatedSections, bundleTotal, volumeSpentTotal] = await Promise.all([
+    volumeRepository.findByBookIdPage(book.id, volumePage, 24),
+    sectionRepository.findByBookIdPaginated(book.id, sectionPages, 12),
     purchaseBatchRepository.sumByBook(book.id),
+    volumeRepository.sumPricesByBook(book.id),
   ])
 
-  return c.html(<BookDetailPage book={book} volumes={volumes} sections={sections} bundleTotal={bundleTotal} userEmail={getUserEmail(c)} returnQuery={returnParams.toString()} />)
+  const volumeTotalPages = Math.max(1, Math.ceil(volumeResult.total / 24))
+  const safeVolumePage = Math.min(volumePage, volumeTotalPages)
+  return c.html(<BookDetailPage book={book} volumes={safeVolumePage === volumePage ? volumeResult.volumes : []} sections={paginatedSections.sections} volumeTotal={volumeResult.total} volumeSpentTotal={volumeSpentTotal} volumePage={safeVolumePage} sectionTotals={paginatedSections.totals} sectionPages={sectionPages} sectionQuery={new URL(c.req.url).searchParams.toString()} bundleTotal={bundleTotal} userEmail={getUserEmail(c)} returnQuery={returnParams.toString()} />)
 })
 
 // POST /books — Thêm bộ truyện
@@ -154,7 +166,9 @@ router.get('/:id/volumes/:vid/edit-form', async (c) => {
         <button
           class="btn btn-outline btn-error btn-sm"
           data-delete-url={`/books/${bookId}/volumes/${volId}`}
-          data-delete-confirm="Xóa tập này?"
+          data-delete-confirm={volume.purchaseBatchId
+            ? 'Tập này thuộc một batch mua theo bộ. Xóa sẽ xóa toàn bộ batch và các tập liên quan. Bạn có chắc không?'
+            : 'Xóa tập này?'}
           data-delete-redirect={`/books/${book.slug}`}
         >Xóa</button>
         <div class="flex gap-2">
@@ -270,7 +284,7 @@ router.post('/:id/volumes/:vid', async (c) => {
 // POST /books/:id/volumes/:vid/delete — Xóa tập (form fallback)
 router.post('/:id/volumes/:vid/delete', async (c) => {
   const bookId = Number(c.req.param('id'))
-  await volumeRepository.delete(Number(c.req.param('vid')))
+  await volumeRepository.deleteWithBatch(Number(c.req.param('vid')))
   await bookRepository.syncOwnedVolumes(bookId)
   return c.redirect(`/books/${await bookSlug(bookId)}`)
 })
@@ -278,7 +292,7 @@ router.post('/:id/volumes/:vid/delete', async (c) => {
 // DELETE /books/:id/volumes/:vid — Xóa tập (fetch)
 router.delete('/:id/volumes/:vid', async (c) => {
   const bookId = Number(c.req.param('id'))
-  await volumeRepository.delete(Number(c.req.param('vid')))
+  await volumeRepository.deleteWithBatch(Number(c.req.param('vid')))
   await bookRepository.syncOwnedVolumes(bookId)
   return c.json({ ok: true })
 })
