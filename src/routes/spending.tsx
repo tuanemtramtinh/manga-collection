@@ -1,18 +1,19 @@
 import { Hono } from 'hono'
 import SpendingPage from '../pages/Spending.js'
 import { spendingRepository, groupByMonth } from '../repositories/spendingRepository.js'
-import { getUserEmail } from '../lib/ctx.js'
+import { getUserEmail, getUserId } from '../lib/ctx.js'
 
 const router = new Hono()
 
 router.get('/', async (c) => {
   const selectedMonth = c.req.query('month') ?? ''
+  const userId = getUserId(c)
 
   const [rows, monthly, byBook, availableMonths] = await Promise.all([
-    spendingRepository.findAll(selectedMonth || undefined),
-    spendingRepository.monthlyTotals(),
-    spendingRepository.totalByBook(),
-    spendingRepository.availableMonths(),
+    spendingRepository.findAll(selectedMonth || undefined, userId),
+    spendingRepository.monthlyTotals(userId),
+    spendingRepository.totalByBook(userId),
+    spendingRepository.availableMonths(userId),
   ])
 
   const months     = groupByMonth(rows)

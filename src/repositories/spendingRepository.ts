@@ -32,13 +32,14 @@ export type BookGroup = {
 export const spendingRepository = {
 
   /** Tất cả purchases có price + purchaseDate, filter theo tháng nếu có */
-  async findAll(month?: string): Promise<PurchaseRow[]> {
+  async findAll(month?: string, userId?: number): Promise<PurchaseRow[]> {
     const monthFilter = month
       ? sql`AND to_char(v.purchase_date, 'YYYY-MM') = ${month}`
       : sql``
     const monthFilterG = month
       ? sql`AND to_char(g.purchase_date, 'YYYY-MM') = ${month}`
       : sql``
+    const userFilter = userId ? sql`AND b.user_id = ${userId}` : sql``
 
     const rows = await db.execute(sql`
       SELECT
@@ -55,6 +56,7 @@ export const spendingRepository = {
       JOIN books b ON b.id = v.book_id
       WHERE v.purchase_batch_id IS NULL AND v.purchase_date IS NOT NULL AND v.price IS NOT NULL AND v.price > 0
       ${monthFilter}
+      ${userFilter}
 
       UNION ALL
 
@@ -73,6 +75,7 @@ export const spendingRepository = {
       JOIN volumes v ON v.purchase_batch_id = pb.id
       WHERE pb.total_price > 0
       ${month ? sql`AND to_char(pb.purchase_date, 'YYYY-MM') = ${month}` : sql``}
+      ${userFilter}
       GROUP BY b.id, b.slug, b.title, b.color, pb.id, pb.total_price, pb.purchase_date
 
       UNION ALL
@@ -91,6 +94,7 @@ export const spendingRepository = {
       JOIN books b ON b.id = g.book_id
       WHERE g.purchase_date IS NOT NULL AND g.price IS NOT NULL AND g.price > 0
       ${monthFilterG}
+      ${userFilter}
 
       UNION ALL
 
@@ -109,6 +113,7 @@ export const spendingRepository = {
       JOIN books b ON b.id = s.book_id
       WHERE si.purchase_date IS NOT NULL AND si.price IS NOT NULL AND si.price > 0
       ${month ? sql`AND to_char(si.purchase_date, 'YYYY-MM') = ${month}` : sql``}
+      ${userFilter}
 
       ORDER BY "purchaseDate" DESC
     `)
@@ -116,17 +121,18 @@ export const spendingRepository = {
   },
 
   /** Danh sách các tháng có dữ liệu (cho dropdown) */
-  async availableMonths(): Promise<{ month: string; label: string }[]> {
+  async availableMonths(userId?: number): Promise<{ month: string; label: string }[]> {
+    const userFilter = userId ? sql`AND b.user_id = ${userId}` : sql``
     const rows = await db.execute(sql`
       SELECT DISTINCT to_char(purchase_date, 'YYYY-MM') AS month
       FROM (
-        SELECT purchase_date FROM volumes      WHERE purchase_batch_id IS NULL AND purchase_date IS NOT NULL AND price > 0
+        SELECT v.purchase_date FROM volumes v JOIN books b ON b.id = v.book_id WHERE v.purchase_batch_id IS NULL AND v.purchase_date IS NOT NULL AND v.price > 0 ${userFilter}
         UNION ALL
-        SELECT purchase_date FROM purchase_batches WHERE total_price > 0
+        SELECT pb.purchase_date FROM purchase_batches pb JOIN books b ON b.id = pb.book_id WHERE pb.total_price > 0 ${userFilter}
         UNION ALL
-        SELECT purchase_date FROM goods        WHERE purchase_date IS NOT NULL AND price > 0
+        SELECT g.purchase_date FROM goods g JOIN books b ON b.id = g.book_id WHERE g.purchase_date IS NOT NULL AND g.price > 0 ${userFilter}
         UNION ALL
-        SELECT purchase_date FROM section_items WHERE purchase_date IS NOT NULL AND price > 0
+        SELECT si.purchase_date FROM section_items si JOIN sections s ON s.id = si.section_id JOIN books b ON b.id = s.book_id WHERE si.purchase_date IS NOT NULL AND si.price > 0 ${userFilter}
       ) t
       ORDER BY month DESC
     `)
@@ -137,23 +143,24 @@ export const spendingRepository = {
   },
 
   /** Tổng chi theo từng tháng (12 tháng gần nhất) cho chart */
-  async monthlyTotals(): Promise<{ month: string; total: number }[]> {
+  async monthlyTotals(userId?: number): Promise<{ month: string; total: number }[]> {
+    const userFilter = userId ? sql`AND b.user_id = ${userId}` : sql``
     const rows = await db.execute(sql`
       SELECT
         to_char(purchase_date, 'YYYY-MM') AS month,
         SUM(price)::int                   AS total
       FROM (
-        SELECT purchase_date, price FROM volumes
-        WHERE purchase_batch_id IS NULL AND purchase_date IS NOT NULL AND price > 0
+        SELECT v.purchase_date, v.price FROM volumes v JOIN books b ON b.id = v.book_id
+        WHERE v.purchase_batch_id IS NULL AND v.purchase_date IS NOT NULL AND v.price > 0 ${userFilter}
         UNION ALL
-        SELECT purchase_date, total_price FROM purchase_batches
-        WHERE total_price > 0
+        SELECT pb.purchase_date, pb.total_price FROM purchase_batches pb JOIN books b ON b.id = pb.book_id
+        WHERE pb.total_price > 0 ${userFilter}
         UNION ALL
-        SELECT purchase_date, price FROM goods
-        WHERE purchase_date IS NOT NULL AND price > 0
+        SELECT g.purchase_date, g.price FROM goods g JOIN books b ON b.id = g.book_id
+        WHERE g.purchase_date IS NOT NULL AND g.price > 0 ${userFilter}
         UNION ALL
-        SELECT purchase_date, price FROM section_items
-        WHERE purchase_date IS NOT NULL AND price > 0
+        SELECT si.purchase_date, si.price FROM section_items si JOIN sections s ON s.id = si.section_id JOIN books b ON b.id = s.book_id
+        WHERE si.purchase_date IS NOT NULL AND si.price > 0 ${userFilter}
       ) t
       WHERE purchase_date >= NOW() - INTERVAL '12 months'
       GROUP BY month
@@ -163,7 +170,8 @@ export const spendingRepository = {
   },
 
   /** Tổng chi theo từng bộ truyện (top 10) cho chart */
-  async totalByBook(): Promise<{ bookId: number; bookTitle: string; bookColor: string; total: number }[]> {
+  async totalByBook(userId?: number): Promise<{ bookId: number; bookTitle: string; bookColor: string; total: number }[]> {
+    const userFilter = userId ? sql`AND b.user_id = ${userId}` : sql``
     const rows = await db.execute(sql`
       SELECT
         b.id          AS "bookId",
@@ -182,6 +190,7 @@ export const spendingRepository = {
         WHERE si.price > 0
       ) t
       JOIN books b ON b.id = t.book_id
+      WHERE 1 = 1 ${userFilter}
       GROUP BY b.id, b.title, b.color
       ORDER BY total DESC
       LIMIT 10

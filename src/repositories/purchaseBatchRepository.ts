@@ -1,6 +1,6 @@
 import { eq, sql } from 'drizzle-orm'
 import { db } from '../db/index.js'
-import { purchaseBatches, volumes } from '../db/schema.js'
+import { books, purchaseBatches, volumes } from '../db/schema.js'
 
 export const purchaseBatchRepository = {
   async createWithVolumes(input: {
@@ -37,9 +37,10 @@ export const purchaseBatchRepository = {
     return Number(row?.total ?? 0)
   },
 
-  async sumAllPrices(): Promise<number> {
-    const [row] = await db.select({ total: sql<number>`coalesce(sum(${purchaseBatches.totalPrice}), 0)` })
-      .from(purchaseBatches)
+  async sumAllPrices(userId?: number): Promise<number> {
+    const [row] = userId
+      ? await db.select({ total: sql<number>`coalesce(sum(${purchaseBatches.totalPrice}), 0)` }).from(purchaseBatches).innerJoin(books, eq(purchaseBatches.bookId, books.id)).where(eq(books.userId, userId))
+      : await db.select({ total: sql<number>`coalesce(sum(${purchaseBatches.totalPrice}), 0)` }).from(purchaseBatches)
     return Number(row?.total ?? 0)
   },
 }

@@ -39,7 +39,7 @@ router.get('/books', async (c) => {
 // GET /export/spending — Export spending as Excel
 router.get('/spending', async (c) => {
   const month = c.req.query('month') ?? ''
-  const rows = await spendingRepository.findAll(month || undefined)
+  const rows = await spendingRepository.findAll(month || undefined, getUserId(c))
   const sortedRows = [...rows].sort((a, b) => {
     const byBook = a.bookTitle.localeCompare(b.bookTitle, 'vi')
     if (byBook !== 0) return byBook

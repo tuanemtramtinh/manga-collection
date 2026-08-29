@@ -37,8 +37,8 @@ router.get('/', async (c) => {
   const [bookPage, quickBooks, individualSpent, bundleSpent] = await Promise.all([
     bookRepository.findPage({ q, status, sort, userId }, page, pageSize),
     bookRepository.findAll({ sort: 'title', userId }),
-    volumeRepository.sumAllPrices(),
-    purchaseBatchRepository.sumAllPrices(),
+    volumeRepository.sumAllPrices(userId),
+    purchaseBatchRepository.sumAllPrices(userId),
   ])
   const totalSpent = individualSpent + bundleSpent
   const totalPages = Math.max(1, Math.ceil(bookPage.total / pageSize))

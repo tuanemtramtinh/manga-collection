@@ -1,6 +1,6 @@
 import { eq, sum, count } from 'drizzle-orm'
 import { db } from '../db/index.js'
-import { purchaseBatches, volumes } from '../db/schema.js'
+import { books, purchaseBatches, volumes } from '../db/schema.js'
 import type { Volume } from '../types.js'
 import type { NewVolume } from '../db/schema.js'
 
@@ -70,8 +70,10 @@ export const volumeRepository = {
     })
   },
 
-  async sumAllPrices(): Promise<number> {
-    const [row] = await db.select({ total: sum(volumes.price) }).from(volumes)
+  async sumAllPrices(userId?: number): Promise<number> {
+    const [row] = userId
+      ? await db.select({ total: sum(volumes.price) }).from(volumes).innerJoin(books, eq(volumes.bookId, books.id)).where(eq(books.userId, userId))
+      : await db.select({ total: sum(volumes.price) }).from(volumes)
     return Number(row?.total ?? 0)
   },
 
