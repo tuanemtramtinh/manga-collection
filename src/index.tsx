@@ -11,6 +11,7 @@ import apiRoutes      from './routes/api.js'
 import exportRoutes   from './routes/export.js'
 import importRoutes   from './routes/import.js'
 import wishlistRoutes from './routes/wishlist.js'
+import purchaseRoutes from './routes/purchases.js'
 
 const app = new Hono()
 
@@ -31,6 +32,7 @@ app.route('/api', apiRoutes)
 app.route('/export', exportRoutes)
 app.route('/import', importRoutes)
 app.route('/wishlist', wishlistRoutes)
+app.route('/purchases', purchaseRoutes)
 
 serve({
   fetch: app.fetch,

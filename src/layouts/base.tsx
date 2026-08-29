@@ -69,8 +69,12 @@ const BaseLayout: FC<Props> = ({ title = 'My App', userEmail, children }) => {
             const messages = {
               welcome: 'Tạo tài khoản thành công! Chào mừng bạn.',
               login:   'Đăng nhập thành công!',
+              'quick-success': 'Đã thêm giao dịch mua nhanh.',
+              'quick-duplicate': 'Các tập này đã có trong bộ truyện.',
+              'quick-error': 'Không thể lưu giao dịch. Hãy kiểm tra lại dữ liệu.',
             }
-            const key = ['welcome', 'login'].find(k => params.get(k) === '1')
+            const quickKey = params.get('quick') ? 'quick-' + params.get('quick') : ''
+            const key = Object.keys(messages).find(k => params.get(k) === '1') || (messages[quickKey] ? quickKey : '')
             if (key) {
               const container = document.getElementById('toast-container')
               if (container) {

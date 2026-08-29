@@ -38,7 +38,7 @@ const StatCard: FC<{ icon: string; label: string; value: string; accent: string 
 const PurchaseItem: FC<{ type: string; label: string; price: number; date: string }> = ({ type, label, price, date }) => (
   <div class="flex items-center justify-between py-1.5 gap-2 text-sm">
     <div class="flex items-center gap-2 min-w-0">
-      <Icon name={type === 'volume' ? 'BookOpen' : 'Gift'} size={13} class="text-base-content/40 shrink-0" />
+      <Icon name={type === 'goods' ? 'Gift' : 'BookOpen'} size={13} class="text-base-content/40 shrink-0" />
       <span class="text-base-content/80 truncate">{label}</span>
     </div>
     <div class="flex items-center gap-2 shrink-0">

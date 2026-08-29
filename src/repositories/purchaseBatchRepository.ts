@@ -36,4 +36,10 @@ export const purchaseBatchRepository = {
       .where(eq(purchaseBatches.bookId, bookId))
     return Number(row?.total ?? 0)
   },
+
+  async sumAllPrices(): Promise<number> {
+    const [row] = await db.select({ total: sql<number>`coalesce(sum(${purchaseBatches.totalPrice}), 0)` })
+      .from(purchaseBatches)
+    return Number(row?.total ?? 0)
+  },
 }

@@ -124,6 +124,10 @@ const Controls: FC<ControlsProps> = ({ q, status, sort, view }) => (
       </div>
 
       <div class="flex gap-2">
+        <button class="btn btn-secondary btn-sm sm:btn-md gap-2" type="button" data-open-modal="modal_quick_purchase">
+          <Icon name="ShoppingCart" size={16} />
+          <span class="hidden sm:inline">Nhập nhanh</span>
+        </button>
         <button class="btn btn-primary btn-sm sm:btn-md gap-2" type="button" data-open-modal="modal_book">
           <Icon name="Plus" size={16} />
           <span class="hidden sm:inline">Thêm truyện</span>
@@ -222,11 +226,55 @@ const Footer: FC = () => (
   <footer class="mt-16 pb-10" />
 )
 
+const QuickPurchaseModal: FC<{ books: Book[] }> = ({ books }) => (
+  <dialog id="modal_quick_purchase" class="modal modal-bottom sm:modal-middle">
+    <div class="modal-box w-full sm:max-w-md">
+      <h3 class="font-bold text-lg mb-1">Nhập nhanh giao dịch</h3>
+      <p class="text-sm text-base-content/50 mb-4">Thêm tập đã mua mà không cần mở trang chi tiết.</p>
+      <form method="post" action="/purchases/quick" class="flex flex-col gap-3" id="form_quick_purchase">
+        <label class="form-control w-full">
+          <div class="label"><span class="label-text">Bộ truyện *</span></div>
+          <select name="bookId" class="select select-bordered w-full" required>
+            <option value="" disabled selected>Chọn bộ truyện</option>
+            {books.map(book => <option value={book.id}>{book.title}</option>)}
+          </select>
+        </label>
+        <label class="form-control w-full">
+          <div class="label"><span class="label-text">Số tập *</span><span class="label-text-alt text-base-content/40">vd: 1-5 hoặc 1,3,5</span></div>
+          <input type="text" name="numbers" class="input input-bordered w-full font-mono" placeholder="1-5" required />
+        </label>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <label class="form-control w-full">
+            <div class="label"><span class="label-text">Hình thức</span></div>
+            <select name="mode" class="select select-bordered w-full">
+              <option value="single">Giá từng tập</option>
+              <option value="bundle">Giá nguyên bộ</option>
+            </select>
+          </label>
+          <label class="form-control w-full">
+            <div class="label"><span class="label-text">Giá (₫) *</span></div>
+            <input type="number" name="price" class="input input-bordered w-full" min="1" required />
+          </label>
+        </div>
+        <label class="form-control w-full">
+          <div class="label"><span class="label-text">Ngày mua *</span></div>
+          <input type="date" name="purchaseDate" class="input input-bordered w-full" required />
+        </label>
+      </form>
+      <div class="flex justify-end gap-2 mt-5">
+        <form method="dialog"><button class="btn btn-ghost">Hủy</button></form>
+        <button class="btn btn-secondary" type="submit" form="form_quick_purchase">Lưu giao dịch</button>
+      </div>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+  </dialog>
+)
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-type HomePageProps = { books: Book[]; totalSpent: number; userEmail?: string; q: string; status: string; sort: string; view: string; returnQuery?: string }
+type HomePageProps = { books: Book[]; quickBooks: Book[]; totalSpent: number; userEmail?: string; q: string; status: string; sort: string; view: string; returnQuery?: string }
 
-const HomePage: FC<HomePageProps> = ({ books, totalSpent, userEmail, q, status, sort, view, returnQuery }) => (
+const HomePage: FC<HomePageProps> = ({ books, quickBooks, totalSpent, userEmail, q, status, sort, view, returnQuery }) => (
   <BaseLayout title="Kệ Truyện" userEmail={userEmail}>
     <div class="container mx-auto px-4 py-6 sm:py-8" style="max-width:1080px;">
 
@@ -279,6 +327,7 @@ const HomePage: FC<HomePageProps> = ({ books, totalSpent, userEmail, q, status, 
     </div>
 
     <BookModal />
+    <QuickPurchaseModal books={quickBooks} />
     <DetailModal />
 
     <script src="/public/js/book-modal.js" defer></script>

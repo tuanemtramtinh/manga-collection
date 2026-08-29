@@ -11,6 +11,10 @@
 # deps
 node_modules/
 
+# build output
+public/output.css
+dist/
+
 # env
 .env
 .env.production

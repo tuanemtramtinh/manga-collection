@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import HomePage from '../pages/Home.js'
 import { bookRepository } from '../repositories/bookRepository.js'
 import { volumeRepository } from '../repositories/volumeRepository.js'
+import { purchaseBatchRepository } from '../repositories/purchaseBatchRepository.js'
 import { getUserEmail } from '../lib/ctx.js'
 import type { BookStatus } from '../types.js'
 
@@ -28,11 +29,14 @@ router.get('/', async (c) => {
   if (sort) returnParams.set('sort', sort)
   if (view === 'grid') returnParams.set('view', view)
 
-  const [books, totalSpent] = await Promise.all([
+  const [books, quickBooks, individualSpent, bundleSpent] = await Promise.all([
     bookRepository.findAll({ q, status, sort }),
+    bookRepository.findAll({ sort: 'title' }),
     volumeRepository.sumAllPrices(),
+    purchaseBatchRepository.sumAllPrices(),
   ])
-  return c.html(<HomePage books={books} totalSpent={totalSpent} userEmail={getUserEmail(c)} q={q} status={status} sort={sort} view={view} returnQuery={returnParams.toString()} />)
+  const totalSpent = individualSpent + bundleSpent
+  return c.html(<HomePage books={books} quickBooks={quickBooks} totalSpent={totalSpent} userEmail={getUserEmail(c)} q={q} status={status} sort={sort} view={view} returnQuery={returnParams.toString()} />)
 })
 
 export default router
